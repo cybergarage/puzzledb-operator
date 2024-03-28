@@ -1,3 +1,6 @@
+![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/cybergarage/puzzledb-operator) [![Go](https://github.com/cybergarage/puzzledb-operator/actions/workflows/make.yml/badge.svg)](https://github.com/cybergarage/puzzledb-operator/actions/workflows/make.yml) [![Go Reference](https://pkg.go.dev/badge/github.com/cybergarage/puzzledb-operator.svg)](https://pkg.go.dev/github.com/cybergarage/puzzledb-operator) [![Go Report Card](https://img.shields.io/badge/go%20report-A%2B-brightgreen)](https://goreportcard.com/report/github.com/cybergarage/puzzledb-operator) [![codecov](https://codecov.io/gh/cybergarage/puzzledb-operator/branch/main/graph/badge.svg?token=C3Q82XPE44)](https://codecov.io/gh/cybergarage/puzzledb-operator)
+
+
 # puzzledb-operator
 // TODO(user): Add simple overview of use/purpose
 
