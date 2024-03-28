@@ -1,0 +1,12 @@
+apiVersion: apiextensions.k8s.io.cybergarage.org/v1
+kind: PuzzleDB
+metadata:
+  labels:
+    app.kubernetes.io/name: puzzledb
+    app.kubernetes.io/instance: puzzledb-sample
+    app.kubernetes.io/part-of: puzzledb-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: puzzledb-operator
+  name: puzzledb-sample
+spec:
+  # TODO(user): Add fields here
