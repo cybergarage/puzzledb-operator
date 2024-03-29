@@ -28,8 +28,8 @@ type PuzzleDBSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of PuzzleDB. Edit puzzledb_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Size is the size of the PuzzleDB deployment
+	Size int32 `json:"size"`
 }
 
 // PuzzleDBStatus defines the observed state of PuzzleDB
