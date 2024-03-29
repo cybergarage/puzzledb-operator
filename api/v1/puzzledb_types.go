@@ -28,8 +28,9 @@ type PuzzleDBSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Size is the size of the PuzzleDB deployment
-	Size int32 `json:"size"`
+	// Size defines the number of PuzzleDB instances
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
+	Size int32 `json:"size,omitempty"`
 }
 
 // PuzzleDBStatus defines the observed state of PuzzleDB
