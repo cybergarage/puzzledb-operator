@@ -1,11 +1,14 @@
+![doc/img/logo](doc/img/logo.png)
+
+
 ![](https://img.shields.io/badge/status-Work%20In%20Progress-8A2BE2)![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/cybergarage/puzzledb-operator) [![Go](https://github.com/cybergarage/puzzledb-operator/actions/workflows/make.yml/badge.svg)](https://github.com/cybergarage/puzzledb-operator/actions/workflows/make.yml) [![Go Reference](https://pkg.go.dev/badge/github.com/cybergarage/puzzledb-operator.svg)](https://pkg.go.dev/github.com/cybergarage/puzzledb-operator) [![Go Report Card](https://img.shields.io/badge/go%20report-A%2B-brightgreen)](https://goreportcard.com/report/github.com/cybergarage/puzzledb-operator) 
 
 
-# puzzledb-operator
-// TODO(user): Add simple overview of use/purpose
+PuzzleDB aspires to be a high-performance, distributed, cloud-native, multi-API, multi-model database. PuzzleDB is a multi-data model database capable of handling key-value, relational, and document models. To learn more about PuzzleDB, visit [the GitHub repository](https://github.com/cybergarage/puzzledb-go).
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+PuzzleDB Operator is a Kubernetes operator that manages the lifecycle of PuzzleDB instances. 
 
 ## Getting Started
 
