@@ -3,10 +3,10 @@ kind: PuzzleDB
 metadata:
   labels:
     app.kubernetes.io/name: puzzledb
-    app.kubernetes.io/instance: puzzledb-sample
+    app.kubernetes.io/instance: puzzledb-server
     app.kubernetes.io/part-of: puzzledb-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: puzzledb-operator
-  name: puzzledb-sample
+  name: puzzledb-server
 spec:
   # TODO(user): Add fields here
