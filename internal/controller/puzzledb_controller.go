@@ -53,7 +53,7 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	log.Info("Reconciling VisitorsApp", "Request.Namespace", req.Namespace, "Request.Name", req.Name)
 
 	// Fetch the VisitorsApp instance
-	v := &appv1.VisitorsApp{}
+	v := &apiextensionsk8siov1.PuzzleDB{}
 	err := r.Client.Get(context.TODO(), req.NamespacedName, v)
 	if err != nil {
 		if errors.IsNotFound(err) {
