@@ -18,9 +18,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,7 +33,8 @@ import (
 // PuzzleDBReconciler reconciles a PuzzleDB object
 type PuzzleDBReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 //+kubebuilder:rbac:groups=apiextensions.k8s.io.cybergarage.org,resources=puzzledbs,verbs=get;list;watch;create;update;patch;delete
@@ -67,6 +70,26 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// finalizeMemcached will perform the required operations before delete the CR.
+func (r *PuzzleDBReconciler) doFinalizerOperationsForMemcached(cr *apiextensionsk8siov1.PuzzleDB) {
+	// TODO(user): Add the cleanup steps that the operator
+	// needs to do before the CR can be deleted. Examples
+	// of finalizers include performing backups and deleting
+	// resources that are not owned by this CR, like a PVC.
+
+	// Note: It is not recommended to use finalizers with the purpose of delete resources which are
+	// created and managed in the reconciliation. These ones, such as the Deployment created on this reconcile,
+	// are defined as depended of the custom resource. See that we use the method ctrl.SetControllerReference.
+	// to set the ownerRef which means that the Deployment will be deleted by the Kubernetes API.
+	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
+
+	// The following implementation will raise an event
+	r.Recorder.Event(cr, "Warning", "Deleting",
+		fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
+			cr.Name,
+			cr.Namespace))
 }
 
 // SetupWithManager sets up the controller with the Manager.
