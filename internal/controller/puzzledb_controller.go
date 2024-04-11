@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -320,6 +321,7 @@ func (r *PuzzleDBReconciler) doFinalizerOperationsPuzzleDB(cr *apiextensionsk8si
 func (r *PuzzleDBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiextensionsk8siov1.PuzzleDB{}).
+		Owns(&appsv1.Deployment{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
