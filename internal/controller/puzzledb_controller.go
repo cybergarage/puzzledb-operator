@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	apiextensionsk8siov1 "github.com/cybergarage/puzzledb-operator/api/v1"
@@ -96,5 +97,7 @@ func (r *PuzzleDBReconciler) doFinalizerOperationsForMemcached(cr *apiextensions
 func (r *PuzzleDBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiextensionsk8siov1.PuzzleDB{}).
+		Owns(&apiextensionsk8siov1.Deployment{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
