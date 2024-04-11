@@ -290,7 +290,7 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// 	return ctrl.Result{}, err
 	// }
 
-	// return ctrl.Result{}, nil
+	return ctrl.Result{}, nil
 }
 
 // finalizeMemcached will perform the required operations before delete the CR.
