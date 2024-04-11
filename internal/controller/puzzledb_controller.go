@@ -28,6 +28,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	apiextensionsk8siov1 "github.com/cybergarage/puzzledb-operator/api/v1"
@@ -40,6 +41,8 @@ const (
 	// typeDegradedPuzzleDB represents the status used when the custom resource is deleted and the finalizer operations are must to occur.
 	typeDegradedPuzzleDB = "Degraded"
 )
+
+const puzzledbFinalizer = "puzzledb.cybergarage.org/finalizer"
 
 // PuzzleDBReconciler reconciles a PuzzleDB object
 type PuzzleDBReconciler struct {
@@ -126,78 +129,78 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 	}
 
-	// // Let's add a finalizer. Then, we can define some operations which should
-	// // occurs before the custom resource to be deleted.
-	// // More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers
-	// if !controllerutil.ContainsFinalizer(puzzledb, puzzledbFinalizer) {
-	// 	log.Info("Adding Finalizer for PuzzleDB")
-	// 	if ok := controllerutil.AddFinalizer(puzzledb, puzzledbFinalizer); !ok {
-	// 		log.Error(err, "Failed to add finalizer into the custom resource")
-	// 		return ctrl.Result{Requeue: true}, nil
-	// 	}
+	// Let's add a finalizer. Then, we can define some operations which should
+	// occurs before the custom resource to be deleted.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers
+	if !controllerutil.ContainsFinalizer(puzzledb, puzzledbFinalizer) {
+		log.Info("Adding Finalizer for PuzzleDB")
+		if ok := controllerutil.AddFinalizer(puzzledb, puzzledbFinalizer); !ok {
+			log.Error(err, "Failed to add finalizer into the custom resource")
+			return ctrl.Result{Requeue: true}, nil
+		}
 
-	// 	if err = r.Update(ctx, puzzledb); err != nil {
-	// 		log.Error(err, "Failed to update custom resource to add finalizer")
-	// 		return ctrl.Result{}, err
-	// 	}
-	// }
+		if err = r.Update(ctx, puzzledb); err != nil {
+			log.Error(err, "Failed to update custom resource to add finalizer")
+			return ctrl.Result{}, err
+		}
+	}
 
-	// // Check if the PuzzleDB instance is marked to be deleted, which is
-	// // indicated by the deletion timestamp being set.
-	// isPuzzleDBMarkedToBeDeleted := puzzledb.GetDeletionTimestamp() != nil
-	// if isPuzzleDBMarkedToBeDeleted {
-	// 	if controllerutil.ContainsFinalizer(puzzledb, puzzledbFinalizer) {
-	// 		log.Info("Performing Finalizer Operations for PuzzleDB before delete CR")
+	// Check if the PuzzleDB instance is marked to be deleted, which is
+	// indicated by the deletion timestamp being set.
+	isPuzzleDBMarkedToBeDeleted := puzzledb.GetDeletionTimestamp() != nil
+	if isPuzzleDBMarkedToBeDeleted {
+		if controllerutil.ContainsFinalizer(puzzledb, puzzledbFinalizer) {
+			log.Info("Performing Finalizer Operations for PuzzleDB before delete CR")
 
-	// 		// Let's add here an status "Downgrade" to define that this resource begin its process to be terminated.
-	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeDegradedPuzzleDB,
-	// 			Status: metav1.ConditionUnknown, Reason: "Finalizing",
-	// 			Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", puzzledb.Name)})
+			// Let's add here an status "Downgrade" to define that this resource begin its process to be terminated.
+			meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeDegradedPuzzleDB,
+				Status: metav1.ConditionUnknown, Reason: "Finalizing",
+				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", puzzledb.Name)})
 
-	// 		if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to update PuzzleDB status")
-	// 			return ctrl.Result{}, err
-	// 		}
+			if err := r.Status().Update(ctx, puzzledb); err != nil {
+				log.Error(err, "Failed to update PuzzleDB status")
+				return ctrl.Result{}, err
+			}
 
-	// 		// Perform all operations required before remove the finalizer and allow
-	// 		// the Kubernetes API to remove the custom resource.
-	// 		r.doFinalizerOperationsForPuzzleDB(puzzledb)
+			// Perform all operations required before remove the finalizer and allow
+			// the Kubernetes API to remove the custom resource.
+			r.doFinalizerOperationsForPuzzleDB(puzzledb)
 
-	// 		// TODO(user): If you add operations to the doFinalizerOperationsForPuzzleDB method
-	// 		// then you need to ensure that all worked fine before deleting and updating the Downgrade status
-	// 		// otherwise, you should requeue here.
+			// TODO(user): If you add operations to the doFinalizerOperationsForPuzzleDB method
+			// then you need to ensure that all worked fine before deleting and updating the Downgrade status
+			// otherwise, you should requeue here.
 
-	// 		// Re-fetch the puzzledb Custom Resource before update the status
-	// 		// so that we have the latest state of the resource on the cluster and we will avoid
-	// 		// raise the issue "the object has been modified, please apply
-	// 		// your changes to the latest version and try again" which would re-trigger the reconciliation
-	// 		if err := r.Get(ctx, req.NamespacedName, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to re-fetch puzzledb")
-	// 			return ctrl.Result{}, err
-	// 		}
+			// Re-fetch the puzzledb Custom Resource before update the status
+			// so that we have the latest state of the resource on the cluster and we will avoid
+			// raise the issue "the object has been modified, please apply
+			// your changes to the latest version and try again" which would re-trigger the reconciliation
+			if err := r.Get(ctx, req.NamespacedName, puzzledb); err != nil {
+				log.Error(err, "Failed to re-fetch puzzledb")
+				return ctrl.Result{}, err
+			}
 
-	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeDegradedPuzzleDB,
-	// 			Status: metav1.ConditionTrue, Reason: "Finalizing",
-	// 			Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", puzzledb.Name)})
+			meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeDegradedPuzzleDB,
+				Status: metav1.ConditionTrue, Reason: "Finalizing",
+				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", puzzledb.Name)})
 
-	// 		if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to update PuzzleDB status")
-	// 			return ctrl.Result{}, err
-	// 		}
+			if err := r.Status().Update(ctx, puzzledb); err != nil {
+				log.Error(err, "Failed to update PuzzleDB status")
+				return ctrl.Result{}, err
+			}
 
-	// 		log.Info("Removing Finalizer for PuzzleDB after successfully perform the operations")
-	// 		if ok := controllerutil.RemoveFinalizer(puzzledb, puzzledbFinalizer); !ok {
-	// 			log.Error(err, "Failed to remove finalizer for PuzzleDB")
-	// 			return ctrl.Result{Requeue: true}, nil
-	// 		}
+			log.Info("Removing Finalizer for PuzzleDB after successfully perform the operations")
+			if ok := controllerutil.RemoveFinalizer(puzzledb, puzzledbFinalizer); !ok {
+				log.Error(err, "Failed to remove finalizer for PuzzleDB")
+				return ctrl.Result{Requeue: true}, nil
+			}
 
-	// 		if err := r.Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to remove finalizer for PuzzleDB")
-	// 			return ctrl.Result{}, err
-	// 		}
-	// 	}
-	// 	return ctrl.Result{}, nil
-	// }
+			if err := r.Update(ctx, puzzledb); err != nil {
+				log.Error(err, "Failed to remove finalizer for PuzzleDB")
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
 
 	// // Check if the deployment already exists, if not create a new one
 	// found := &appsv1.Deployment{}
@@ -294,7 +297,7 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 }
 
 // finalizeMemcached will perform the required operations before delete the CR.
-func (r *PuzzleDBReconciler) doFinalizerOperationsForMemcached(cr *apiextensionsk8siov1.PuzzleDB) {
+func (r *PuzzleDBReconciler) doFinalizerOperationsPuzzleDB(cr *apiextensionsk8siov1.PuzzleDB) {
 	// TODO(user): Add the cleanup steps that the operator
 	// needs to do before the CR can be deleted. Examples
 	// of finalizers include performing backups and deleting
