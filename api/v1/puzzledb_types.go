@@ -31,6 +31,10 @@ type PuzzleDBSpec struct {
 	// Size defines the number of PuzzleDB instances
 	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	Size int32 `json:"size,omitempty"`
+
+	// Port defines the port that will be used to init the container with the image
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
+	ContainerPort int32 `json:"containerPort,omitempty"`
 }
 
 // PuzzleDBStatus defines the observed state of PuzzleDB
