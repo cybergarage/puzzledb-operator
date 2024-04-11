@@ -52,6 +52,10 @@ var _ = Describe("PuzzleDB Controller", func() {
 						Namespace: "default",
 					},
 					// TODO(user): Specify other spec details if needed.
+					Spec: apiextensionsk8siov1.PuzzleDBSpec{
+						Size:          1,
+						ContainerPort: 11211,
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
