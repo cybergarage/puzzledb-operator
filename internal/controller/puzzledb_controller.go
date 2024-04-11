@@ -19,8 +19,11 @@ package controller
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -315,6 +318,142 @@ func (r *PuzzleDBReconciler) doFinalizerOperationsPuzzleDB(cr *apiextensionsk8si
 		fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
 			cr.Name,
 			cr.Namespace))
+}
+
+// deploymentForPuzzleDB returns a PuzzleDB Deployment object
+func (r *PuzzleDBReconciler) deploymentForPuzzleDB(
+	puzzledb *apiextensionsk8siov1.PuzzleDB) (*appsv1.Deployment, error) {
+	ls := labelsForPuzzleDB(puzzledb.Name)
+	replicas := puzzledb.Spec.Size
+
+	// Get the Operand image
+	image, err := imageForPuzzleDB()
+	if err != nil {
+		return nil, err
+	}
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      puzzledb.Name,
+			Namespace: puzzledb.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: ls,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: ls,
+				},
+				Spec: corev1.PodSpec{
+					// TODO(user): Uncomment the following code to configure the nodeAffinity expression
+					// according to the platforms which are supported by your solution. It is considered
+					// best practice to support multiple architectures. build your manager image using the
+					// makefile target docker-buildx. Also, you can use docker manifest inspect <image>
+					// to check what are the platforms supported.
+					// More info: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+					//Affinity: &corev1.Affinity{
+					//	NodeAffinity: &corev1.NodeAffinity{
+					//		RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					//			NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					//				{
+					//					MatchExpressions: []corev1.NodeSelectorRequirement{
+					//						{
+					//							Key:      "kubernetes.io/arch",
+					//							Operator: "In",
+					//							Values:   []string{"amd64", "arm64", "ppc64le", "s390x"},
+					//						},
+					//						{
+					//							Key:      "kubernetes.io/os",
+					//							Operator: "In",
+					//							Values:   []string{"linux"},
+					//						},
+					//					},
+					//				},
+					//			},
+					//		},
+					//	},
+					//},
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &[]bool{true}[0],
+						// IMPORTANT: seccomProfile was introduced with Kubernetes 1.19
+						// If you are looking for to produce solutions to be supported
+						// on lower versions you must remove this option.
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
+					},
+					Containers: []corev1.Container{{
+						Image:           image,
+						Name:            "puzzledb",
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						// Ensure restrictive context for the container
+						// More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+						SecurityContext: &corev1.SecurityContext{
+							// WARNING: Ensure that the image used defines an UserID in the Dockerfile
+							// otherwise the Pod will not run and will fail with "container has runAsNonRoot and image has non-numeric user"".
+							// If you want your workloads admitted in namespaces enforced with the restricted mode in OpenShift/OKD vendors
+							// then, you MUST ensure that the Dockerfile defines a User ID OR you MUST leave the "RunAsNonRoot" and
+							// "RunAsUser" fields empty.
+							RunAsNonRoot: &[]bool{true}[0],
+							// The puzzledb image does not use a non-zero numeric user as the default user.
+							// Due to RunAsNonRoot field being set to true, we need to force the user in the
+							// container to a non-zero numeric user. We do this using the RunAsUser field.
+							// However, if you are looking to provide solution for K8s vendors like OpenShift
+							// be aware that you cannot run under its restricted-v2 SCC if you set this value.
+							RunAsUser:                &[]int64{1001}[0],
+							AllowPrivilegeEscalation: &[]bool{false}[0],
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+						},
+						Ports: []corev1.ContainerPort{{
+							ContainerPort: puzzledb.Spec.ContainerPort,
+							Name:          "puzzledb",
+						}},
+						Command: []string{"puzzledb", "-m=64", "-o", "modern", "-v"},
+					}},
+				},
+			},
+		},
+	}
+
+	// Set the ownerRef for the Deployment
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(puzzledb, dep, r.Scheme); err != nil {
+		return nil, err
+	}
+	return dep, nil
+}
+
+// labelsForPuzzleDB returns the labels for selecting the resources
+// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+func labelsForPuzzleDB(name string) map[string]string {
+	var imageTag string
+	image, err := imageForPuzzleDB()
+	if err == nil {
+		imageTag = strings.Split(image, ":")[1]
+	}
+	return map[string]string{"app.kubernetes.io/name": "PuzzleDB",
+		"app.kubernetes.io/instance":   name,
+		"app.kubernetes.io/version":    imageTag,
+		"app.kubernetes.io/part-of":    "puzzledb-operator",
+		"app.kubernetes.io/created-by": "controller-manager",
+	}
+}
+
+// imageForPuzzleDB gets the Operand image which is managed by this controller
+// from the MEMCACHED_IMAGE environment variable defined in the config/manager/manager.yaml
+func imageForPuzzleDB() (string, error) {
+	var imageEnvVar = "MEMCACHED_IMAGE"
+	image, found := os.LookupEnv(imageEnvVar)
+	if !found {
+		return "", fmt.Errorf("Unable to find %s environment variable with the image", imageEnvVar)
+	}
+	return image, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
