@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -29,6 +30,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	apiextensionsk8siov1 "github.com/cybergarage/puzzledb-operator/api/v1"
+)
+
+// Definitions to manage status conditions
+const (
+	// typeAvailablePuzzleDB represents the status of the Deployment reconciliation
+	typeAvailablePuzzleDB = "Available"
+	// typeDegradedPuzzleDB represents the status used when the custom resource is deleted and the finalizer operations are must to occur.
+	typeDegradedPuzzleDB = "Degraded"
 )
 
 // PuzzleDBReconciler reconciles a PuzzleDB object
@@ -81,7 +90,7 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// }
 
 	// Fetch the PuzzleDB instance
-	// The purpose is check if the Custom Resource for the Kind puzzledb
+	// The purpose is check if the Custom Resource for the Kind PuzzleDB
 	// is applied on the cluster if not we return nil to stop the reconciliation
 	puzzledb := &apiextensionsk8siov1.PuzzleDB{}
 	err := r.Get(ctx, req.NamespacedName, puzzledb)
@@ -97,31 +106,31 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	// // Let's just set the status as Unknown when no status are available
-	// if puzzledb.Status.Conditions == nil || len(puzzledb.Status.Conditions) == 0 {
-	// 	meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailableMemcached, Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
-	// 	if err = r.Status().Update(ctx, puzzledb); err != nil {
-	// 		log.Error(err, "Failed to update puzzledb status")
-	// 		return ctrl.Result{}, err
-	// 	}
+	// Let's just set the status as Unknown when no status are available
+	if puzzledb.Status.Conditions == nil || len(puzzledb.Status.Conditions) == 0 {
+		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB, Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
+		if err = r.Status().Update(ctx, puzzledb); err != nil {
+			log.Error(err, "Failed to update PuzzleDB status")
+			return ctrl.Result{}, err
+		}
 
-	// 	// Let's re-fetch the puzzledb Custom Resource after update the status
-	// 	// so that we have the latest state of the resource on the cluster and we will avoid
-	// 	// raise the issue "the object has been modified, please apply
-	// 	// your changes to the latest version and try again" which would re-trigger the reconciliation
-	// 	// if we try to update it again in the following operations
-	// 	if err := r.Get(ctx, req.NamespacedName, puzzledb); err != nil {
-	// 		log.Error(err, "Failed to re-fetch puzzledb")
-	// 		return ctrl.Result{}, err
-	// 	}
-	// }
+		// Let's re-fetch the puzzledb Custom Resource after update the status
+		// so that we have the latest state of the resource on the cluster and we will avoid
+		// raise the issue "the object has been modified, please apply
+		// your changes to the latest version and try again" which would re-trigger the reconciliation
+		// if we try to update it again in the following operations
+		if err := r.Get(ctx, req.NamespacedName, puzzledb); err != nil {
+			log.Error(err, "Failed to re-fetch puzzledb")
+			return ctrl.Result{}, err
+		}
+	}
 
 	// // Let's add a finalizer. Then, we can define some operations which should
 	// // occurs before the custom resource to be deleted.
 	// // More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers
-	// if !controllerutil.ContainsFinalizer(puzzledb, memcachedFinalizer) {
-	// 	log.Info("Adding Finalizer for puzzledb")
-	// 	if ok := controllerutil.AddFinalizer(puzzledb, memcachedFinalizer); !ok {
+	// if !controllerutil.ContainsFinalizer(puzzledb, puzzledbFinalizer) {
+	// 	log.Info("Adding Finalizer for PuzzleDB")
+	// 	if ok := controllerutil.AddFinalizer(puzzledb, puzzledbFinalizer); !ok {
 	// 		log.Error(err, "Failed to add finalizer into the custom resource")
 	// 		return ctrl.Result{Requeue: true}, nil
 	// 	}
@@ -132,28 +141,28 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// 	}
 	// }
 
-	// // Check if the puzzledb instance is marked to be deleted, which is
+	// // Check if the PuzzleDB instance is marked to be deleted, which is
 	// // indicated by the deletion timestamp being set.
-	// isMemcachedMarkedToBeDeleted := puzzledb.GetDeletionTimestamp() != nil
-	// if isMemcachedMarkedToBeDeleted {
-	// 	if controllerutil.ContainsFinalizer(puzzledb, memcachedFinalizer) {
-	// 		log.Info("Performing Finalizer Operations for puzzledb before delete CR")
+	// isPuzzleDBMarkedToBeDeleted := puzzledb.GetDeletionTimestamp() != nil
+	// if isPuzzleDBMarkedToBeDeleted {
+	// 	if controllerutil.ContainsFinalizer(puzzledb, puzzledbFinalizer) {
+	// 		log.Info("Performing Finalizer Operations for PuzzleDB before delete CR")
 
 	// 		// Let's add here an status "Downgrade" to define that this resource begin its process to be terminated.
-	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeDegradedMemcached,
+	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeDegradedPuzzleDB,
 	// 			Status: metav1.ConditionUnknown, Reason: "Finalizing",
 	// 			Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", puzzledb.Name)})
 
 	// 		if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to update puzzledb status")
+	// 			log.Error(err, "Failed to update PuzzleDB status")
 	// 			return ctrl.Result{}, err
 	// 		}
 
 	// 		// Perform all operations required before remove the finalizer and allow
 	// 		// the Kubernetes API to remove the custom resource.
-	// 		r.doFinalizerOperationsForMemcached(puzzledb)
+	// 		r.doFinalizerOperationsForPuzzleDB(puzzledb)
 
-	// 		// TODO(user): If you add operations to the doFinalizerOperationsForMemcached method
+	// 		// TODO(user): If you add operations to the doFinalizerOperationsForPuzzleDB method
 	// 		// then you need to ensure that all worked fine before deleting and updating the Downgrade status
 	// 		// otherwise, you should requeue here.
 
@@ -166,23 +175,23 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// 			return ctrl.Result{}, err
 	// 		}
 
-	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeDegradedMemcached,
+	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeDegradedPuzzleDB,
 	// 			Status: metav1.ConditionTrue, Reason: "Finalizing",
 	// 			Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", puzzledb.Name)})
 
 	// 		if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to update puzzledb status")
+	// 			log.Error(err, "Failed to update PuzzleDB status")
 	// 			return ctrl.Result{}, err
 	// 		}
 
-	// 		log.Info("Removing Finalizer for puzzledb after successfully perform the operations")
-	// 		if ok := controllerutil.RemoveFinalizer(puzzledb, memcachedFinalizer); !ok {
-	// 			log.Error(err, "Failed to remove finalizer for puzzledb")
+	// 		log.Info("Removing Finalizer for PuzzleDB after successfully perform the operations")
+	// 		if ok := controllerutil.RemoveFinalizer(puzzledb, puzzledbFinalizer); !ok {
+	// 			log.Error(err, "Failed to remove finalizer for PuzzleDB")
 	// 			return ctrl.Result{Requeue: true}, nil
 	// 		}
 
 	// 		if err := r.Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to remove finalizer for puzzledb")
+	// 			log.Error(err, "Failed to remove finalizer for PuzzleDB")
 	// 			return ctrl.Result{}, err
 	// 		}
 	// 	}
@@ -194,17 +203,17 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// err = r.Get(ctx, types.NamespacedName{Name: puzzledb.Name, Namespace: puzzledb.Namespace}, found)
 	// if err != nil && apierrors.IsNotFound(err) {
 	// 	// Define a new deployment
-	// 	dep, err := r.deploymentForMemcached(puzzledb)
+	// 	dep, err := r.deploymentForPuzzleDB(puzzledb)
 	// 	if err != nil {
-	// 		log.Error(err, "Failed to define new Deployment resource for puzzledb")
+	// 		log.Error(err, "Failed to define new Deployment resource for PuzzleDB")
 
 	// 		// The following implementation will update the status
-	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailableMemcached,
+	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
 	// 			Status: metav1.ConditionFalse, Reason: "Reconciling",
 	// 			Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", puzzledb.Name, err)})
 
 	// 		if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to update puzzledb status")
+	// 			log.Error(err, "Failed to update PuzzleDB status")
 	// 			return ctrl.Result{}, err
 	// 		}
 
@@ -229,14 +238,14 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// 	return ctrl.Result{}, err
 	// }
 
-	// // The CRD API is defining that the puzzledb type, have a MemcachedSpec.Size field
+	// // The CRD API is defining that the PuzzleDB type, have a PuzzleDBSpec.Size field
 	// // to set the quantity of Deployment instances is the desired state on the cluster.
 	// // Therefore, the following code will ensure the Deployment size is the same as defined
 	// // via the Size spec of the Custom Resource which we are reconciling.
 	// size := puzzledb.Spec.Size
 	// if *found.Spec.Replicas != size {
-	// 	// Increment MemcachedDeploymentSizeUndesiredCountTotal metric by 1
-	// 	monitoring.MemcachedDeploymentSizeUndesiredCountTotal.Inc()
+	// 	// Increment PuzzleDBDeploymentSizeUndesiredCountTotal metric by 1
+	// 	monitoring.PuzzleDBDeploymentSizeUndesiredCountTotal.Inc()
 	// 	found.Spec.Replicas = &size
 	// 	if err = r.Update(ctx, found); err != nil {
 	// 		log.Error(err, "Failed to update Deployment",
@@ -252,12 +261,12 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// 		}
 
 	// 		// The following implementation will update the status
-	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailableMemcached,
+	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
 	// 			Status: metav1.ConditionFalse, Reason: "Resizing",
 	// 			Message: fmt.Sprintf("Failed to update the size for the custom resource (%s): (%s)", puzzledb.Name, err)})
 
 	// 		if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to update puzzledb status")
+	// 			log.Error(err, "Failed to update PuzzleDB status")
 	// 			return ctrl.Result{}, err
 	// 		}
 
@@ -271,16 +280,16 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// }
 
 	// // The following implementation will update the status
-	// meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailableMemcached,
+	// meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
 	// 	Status: metav1.ConditionTrue, Reason: "Reconciling",
 	// 	Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", puzzledb.Name, size)})
 
 	// if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 	log.Error(err, "Failed to update puzzledb status")
+	// 	log.Error(err, "Failed to update PuzzleDB status")
 	// 	return ctrl.Result{}, err
 	// }
 
-	return ctrl.Result{}, nil
+	// return ctrl.Result{}, nil
 }
 
 // finalizeMemcached will perform the required operations before delete the CR.
