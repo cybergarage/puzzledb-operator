@@ -164,7 +164,7 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			// Perform all operations required before remove the finalizer and allow
 			// the Kubernetes API to remove the custom resource.
-			r.doFinalizerOperationsForPuzzleDB(puzzledb)
+			r.doFinalizerOperationsPuzzleDB(puzzledb)
 
 			// TODO(user): If you add operations to the doFinalizerOperationsForPuzzleDB method
 			// then you need to ensure that all worked fine before deleting and updating the Downgrade status
@@ -296,7 +296,7 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{}, nil
 }
 
-// finalizeMemcached will perform the required operations before delete the CR.
+// finalizePuzzleDB will perform the required operations before delete the CR.
 func (r *PuzzleDBReconciler) doFinalizerOperationsPuzzleDB(cr *apiextensionsk8siov1.PuzzleDB) {
 	// TODO(user): Add the cleanup steps that the operator
 	// needs to do before the CR can be deleted. Examples
