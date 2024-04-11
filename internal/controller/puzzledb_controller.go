@@ -54,7 +54,31 @@ type PuzzleDBReconciler struct {
 func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	log.Info("Reconciling VisitorsApp", "Request.Namespace", req.Namespace, "Request.Name", req.Name)
+	log.Info("Reconciling", "Request.Namespace", req.Namespace, "Request.Name", req.Name)
+
+	// Check if prometheus rule already exists, if not create a new one
+	// foundRule := &monitoringv1.PrometheusRule{}
+	// err := r.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, foundRule)
+	// if err != nil && apierrors.IsNotFound(err) {
+	// 	// Define a new prometheus rule
+	// 	prometheusRule := monitoring.NewPrometheusRule(namespace)
+	// 	if err := r.Create(ctx, prometheusRule); err != nil {
+	// 		log.Error(err, "Failed to create prometheus rule")
+	// 		return ctrl.Result{}, nil
+	// 	}
+	// }
+
+	// if err == nil {
+	// 	// Check if prometheus rule spec was changed, if so set as desired
+	// 	desiredRuleSpec := monitoring.NewPrometheusRuleSpec()
+	// 	if !reflect.DeepEqual(foundRule.Spec.DeepCopy(), desiredRuleSpec) {
+	// 		desiredRuleSpec.DeepCopyInto(&foundRule.Spec)
+	// 		if r.Update(ctx, foundRule); err != nil {
+	// 			log.Error(err, "Failed to update prometheus rule")
+	// 			return ctrl.Result{}, nil
+	// 		}
+	// 	}
+	// }
 
 	// Fetch the VisitorsApp instance
 	v := &apiextensionsk8siov1.PuzzleDB{}
@@ -97,7 +121,6 @@ func (r *PuzzleDBReconciler) doFinalizerOperationsForMemcached(cr *apiextensions
 func (r *PuzzleDBReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiextensionsk8siov1.PuzzleDB{}).
-		Owns(&apiextensionsk8siov1.Deployment{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
