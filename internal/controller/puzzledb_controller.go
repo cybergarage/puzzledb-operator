@@ -446,9 +446,9 @@ func labelsForPuzzleDB(name string) map[string]string {
 }
 
 // imageForPuzzleDB gets the Operand image which is managed by this controller
-// from the MEMCACHED_IMAGE environment variable defined in the config/manager/manager.yaml
+// from the PUZZLEDB_IMAGE environment variable defined in the config/manager/manager.yaml
 func imageForPuzzleDB() (string, error) {
-	var imageEnvVar = "MEMCACHED_IMAGE"
+	var imageEnvVar = "PUZZLEDB_IMAGE"
 	image, found := os.LookupEnv(imageEnvVar)
 	if !found {
 		return "", fmt.Errorf("Unable to find %s environment variable with the image", imageEnvVar)
