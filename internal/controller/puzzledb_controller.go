@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -206,45 +208,45 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, nil
 	}
 
-	// // Check if the deployment already exists, if not create a new one
-	// found := &appsv1.Deployment{}
-	// err = r.Get(ctx, types.NamespacedName{Name: puzzledb.Name, Namespace: puzzledb.Namespace}, found)
-	// if err != nil && apierrors.IsNotFound(err) {
-	// 	// Define a new deployment
-	// 	dep, err := r.deploymentForPuzzleDB(puzzledb)
-	// 	if err != nil {
-	// 		log.Error(err, "Failed to define new Deployment resource for PuzzleDB")
+	// Check if the deployment already exists, if not create a new one
+	found := &appsv1.Deployment{}
+	err = r.Get(ctx, types.NamespacedName{Name: puzzledb.Name, Namespace: puzzledb.Namespace}, found)
+	if err != nil && apierrors.IsNotFound(err) {
+		// Define a new deployment
+		dep, err := r.deploymentForPuzzleDB(puzzledb)
+		if err != nil {
+			log.Error(err, "Failed to define new Deployment resource for PuzzleDB")
 
-	// 		// The following implementation will update the status
-	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
-	// 			Status: metav1.ConditionFalse, Reason: "Reconciling",
-	// 			Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", puzzledb.Name, err)})
+			// The following implementation will update the status
+			meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
+				Status: metav1.ConditionFalse, Reason: "Reconciling",
+				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", puzzledb.Name, err)})
 
-	// 		if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to update PuzzleDB status")
-	// 			return ctrl.Result{}, err
-	// 		}
+			if err := r.Status().Update(ctx, puzzledb); err != nil {
+				log.Error(err, "Failed to update PuzzleDB status")
+				return ctrl.Result{}, err
+			}
 
-	// 		return ctrl.Result{}, err
-	// 	}
+			return ctrl.Result{}, err
+		}
 
-	// 	log.Info("Creating a new Deployment",
-	// 		"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-	// 	if err = r.Create(ctx, dep); err != nil {
-	// 		log.Error(err, "Failed to create new Deployment",
-	// 			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-	// 		return ctrl.Result{}, err
-	// 	}
+		log.Info("Creating a new Deployment",
+			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		if err = r.Create(ctx, dep); err != nil {
+			log.Error(err, "Failed to create new Deployment",
+				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			return ctrl.Result{}, err
+		}
 
-	// 	// Deployment created successfully
-	// 	// We will requeue the reconciliation so that we can ensure the state
-	// 	// and move forward for the next operations
-	// 	return ctrl.Result{RequeueAfter: time.Minute}, nil
-	// } else if err != nil {
-	// 	log.Error(err, "Failed to get Deployment")
-	// 	// Let's return the error for the reconciliation be re-trigged again
-	// 	return ctrl.Result{}, err
-	// }
+		// Deployment created successfully
+		// We will requeue the reconciliation so that we can ensure the state
+		// and move forward for the next operations
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Deployment")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	}
 
 	// // The CRD API is defining that the PuzzleDB type, have a PuzzleDBSpec.Size field
 	// // to set the quantity of Deployment instances is the desired state on the cluster.
