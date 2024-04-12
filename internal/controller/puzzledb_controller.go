@@ -80,7 +80,7 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// err := r.Get(ctx, types.NamespacedName{Name: ruleName, Namespace: namespace}, foundRule)
 	// if err != nil && apierrors.IsNotFound(err) {
 	// 	// Define a new prometheus rule
-	// 	prometheusRule := monitoring.NewPrometheusRule(namespace)
+	// 	prometheusRule := monitoring.NewPrometheusRule(req.Namespace)
 	// 	if err := r.Create(ctx, prometheusRule); err != nil {
 	// 		log.Error(err, "Failed to create prometheus rule")
 	// 		return ctrl.Result{}, nil
@@ -248,56 +248,57 @@ func (r *PuzzleDBReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	// // The CRD API is defining that the PuzzleDB type, have a PuzzleDBSpec.Size field
-	// // to set the quantity of Deployment instances is the desired state on the cluster.
-	// // Therefore, the following code will ensure the Deployment size is the same as defined
-	// // via the Size spec of the Custom Resource which we are reconciling.
-	// size := puzzledb.Spec.Size
-	// if *found.Spec.Replicas != size {
-	// 	// Increment PuzzleDBDeploymentSizeUndesiredCountTotal metric by 1
-	// 	monitoring.PuzzleDBDeploymentSizeUndesiredCountTotal.Inc()
-	// 	found.Spec.Replicas = &size
-	// 	if err = r.Update(ctx, found); err != nil {
-	// 		log.Error(err, "Failed to update Deployment",
-	// 			"Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+	// The CRD API is defining that the PuzzleDB type, have a PuzzleDBSpec.Size field
+	// to set the quantity of Deployment instances is the desired state on the cluster.
+	// Therefore, the following code will ensure the Deployment size is the same as defined
+	// via the Size spec of the Custom Resource which we are reconciling.
+	size := puzzledb.Spec.Size
+	if *found.Spec.Replicas != size {
+		// Increment PuzzleDBDeploymentSizeUndesiredCountTotal metric by 1
+		// monitoring.PuzzleDBDeploymentSizeUndesiredCountTotal.Inc()
 
-	// 		// Re-fetch the puzzledb Custom Resource before update the status
-	// 		// so that we have the latest state of the resource on the cluster and we will avoid
-	// 		// raise the issue "the object has been modified, please apply
-	// 		// your changes to the latest version and try again" which would re-trigger the reconciliation
-	// 		if err := r.Get(ctx, req.NamespacedName, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to re-fetch puzzledb")
-	// 			return ctrl.Result{}, err
-	// 		}
+		found.Spec.Replicas = &size
+		if err = r.Update(ctx, found); err != nil {
+			log.Error(err, "Failed to update Deployment",
+				"Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
 
-	// 		// The following implementation will update the status
-	// 		meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
-	// 			Status: metav1.ConditionFalse, Reason: "Resizing",
-	// 			Message: fmt.Sprintf("Failed to update the size for the custom resource (%s): (%s)", puzzledb.Name, err)})
+			// Re-fetch the puzzledb Custom Resource before update the status
+			// so that we have the latest state of the resource on the cluster and we will avoid
+			// raise the issue "the object has been modified, please apply
+			// your changes to the latest version and try again" which would re-trigger the reconciliation
+			if err := r.Get(ctx, req.NamespacedName, puzzledb); err != nil {
+				log.Error(err, "Failed to re-fetch puzzledb")
+				return ctrl.Result{}, err
+			}
 
-	// 		if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 			log.Error(err, "Failed to update PuzzleDB status")
-	// 			return ctrl.Result{}, err
-	// 		}
+			// The following implementation will update the status
+			meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
+				Status: metav1.ConditionFalse, Reason: "Resizing",
+				Message: fmt.Sprintf("Failed to update the size for the custom resource (%s): (%s)", puzzledb.Name, err)})
 
-	// 		return ctrl.Result{}, err
-	// 	}
+			if err := r.Status().Update(ctx, puzzledb); err != nil {
+				log.Error(err, "Failed to update PuzzleDB status")
+				return ctrl.Result{}, err
+			}
 
-	// 	// Now, that we update the size we want to requeue the reconciliation
-	// 	// so that we can ensure that we have the latest state of the resource before
-	// 	// update. Also, it will help ensure the desired state on the cluster
-	// 	return ctrl.Result{Requeue: true}, nil
-	// }
+			return ctrl.Result{}, err
+		}
 
-	// // The following implementation will update the status
-	// meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
-	// 	Status: metav1.ConditionTrue, Reason: "Reconciling",
-	// 	Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", puzzledb.Name, size)})
+		// Now, that we update the size we want to requeue the reconciliation
+		// so that we can ensure that we have the latest state of the resource before
+		// update. Also, it will help ensure the desired state on the cluster
+		return ctrl.Result{Requeue: true}, nil
+	}
 
-	// if err := r.Status().Update(ctx, puzzledb); err != nil {
-	// 	log.Error(err, "Failed to update PuzzleDB status")
-	// 	return ctrl.Result{}, err
-	// }
+	// The following implementation will update the status
+	meta.SetStatusCondition(&puzzledb.Status.Conditions, metav1.Condition{Type: typeAvailablePuzzleDB,
+		Status: metav1.ConditionTrue, Reason: "Reconciling",
+		Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", puzzledb.Name, size)})
+
+	if err := r.Status().Update(ctx, puzzledb); err != nil {
+		log.Error(err, "Failed to update PuzzleDB status")
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
